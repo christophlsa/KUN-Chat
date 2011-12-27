@@ -15,6 +15,7 @@ struct User
 {
 	int pollfd;
 	char* nick;
+	int active;
 };
 
 int user_count = 0;
@@ -34,7 +35,8 @@ void sendToAll (struct User* user, char* msg)
 	int i;
 	for (i = 1; i < poll_count; i++)
 	{
-		write(fds[i].fd, msg2send, msg2sendsize-1);
+		if (fds[i].fd != 0)
+			write(fds[i].fd, msg2send, msg2sendsize-1);
 	}
 }
 
@@ -94,11 +96,25 @@ void handleNewConnection ()
 		
 		user = (struct User*) realloc(user, sizeof(struct User) * ++user_count);
 		user[user_count-1].pollfd = poll_count-1;
+		user[user_count-1].active = 1;
 		
 		setNick(&(user[user_count-1]), NULL);
 		
 		sendToAll(&(user[user_count-1]), "***connected to chat***\n");
 	}
+}
+
+void handleDisconnect (int socknum)
+{
+	close(fds[socknum].fd);
+	
+	fds[socknum].fd = 0;
+	fds[socknum].events = 0;
+	
+	struct User* user = findUserBySocketNumber(socknum);
+	user->active = 0;
+	
+	sendToAll(user, "***disconnected***\n");
 }
 
 void handleContent (struct User* user)
@@ -118,7 +134,11 @@ void handleContent (struct User* user)
 		printf("Client Socket Error: %s\n", strerror(errno));
 		exit(1);
 	}
-	else if (readcount > 0)
+	else if (readcount == 0)
+	{
+		handleDisconnect(user->pollfd);
+	}
+	else
 	{
 		if (strncmp(buffer, "/nick ", 6) == 0)
 		{
@@ -176,7 +196,11 @@ int main (int argc, char *argv[])
 			int i;
 			for (i = 0; i < poll_count; i++)
 			{
-				if (fds[i].revents & POLLIN)
+				if (fds[i].revents & POLLHUP)
+				{
+					handleDisconnect(i);
+				}
+				else if (fds[i].revents & POLLIN)
 				{
 					if (i == 0)
 					{
