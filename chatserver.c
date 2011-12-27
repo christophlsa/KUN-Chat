@@ -40,28 +40,16 @@ void sendToAll (struct User* user, char* msg)
 	}
 }
 
-void setNick (struct User* user, char* newnick)
+void sendToUser (struct User* user, char* msg)
 {
-	if (newnick == NULL)
-	{
-		user->nick = (char*) malloc(sizeof(char) * 10); // TODO
-		snprintf(user->nick, 10, "User %04d", ++nick_count);
-	}
-	else
-	{
-		char oldnick[strlen(user->nick)];
-		strcpy(oldnick, user->nick);
+	int msg2sendsize = (strlen(msg) + 3);
+	char* msg2send = (char*) malloc(sizeof(char) * msg2sendsize);
+	snprintf(msg2send, msg2sendsize, "* %s", msg);
 	
-		int nicklen = strnlen(newnick, 20);
-		user->nick = (char*) realloc(user->nick, sizeof(char) * (nicklen + 1));
-		strncpy(user->nick, newnick, nicklen);
-		
-		if (user->nick[nicklen - 1] != '\0')
-			user->nick[nicklen] = '\0';
-		
-		sendToAll(user, "***changed its nick***\n");
-	}
-
+	printf(msg2send);
+	
+	if (fds[user->pollfd].fd != 0)
+		write(fds[user->pollfd].fd, msg2send, msg2sendsize-1);
 }
 
 struct User* findUserBySocketNumber (int socknum)
@@ -78,6 +66,54 @@ struct User* findUserBySocketNumber (int socknum)
 	return NULL;
 }
 
+struct User* findUserByName (char* name)
+{
+	int i;
+	for (i = 0; i < user_count; i++)
+	{
+		if (strcmp(user[i].nick, name) == 0)
+		{
+			return &(user[i]);
+		}
+	}
+	
+	return NULL;
+}
+
+void setNick (struct User* user, char* newnick)
+{
+	if (newnick == NULL)
+	{
+		user->nick = (char*) malloc(sizeof(char) * 10);
+		snprintf(user->nick, 10, "User %04d", ++nick_count);
+	}
+	else
+	{
+		if (findUserByName(newnick) != NULL)
+		{
+			sendToUser(user, "This nick already exists.\n");
+			return;
+		}
+		else if (strncmp(newnick, "User ", 5) == 0)
+		{
+			sendToUser(user, "This nick is not allowed.\n");
+			return;
+		}
+	
+		char oldnick[strlen(user->nick)];
+		strcpy(oldnick, user->nick);
+	
+		int nicklen = strnlen(newnick, 20);
+		user->nick = (char*) realloc(user->nick, sizeof(char) * (nicklen + 1));
+		strncpy(user->nick, newnick, nicklen);
+		
+		if (user->nick[nicklen - 1] != '\0')
+			user->nick[nicklen] = '\0';
+		
+		sendToAll(user, "***changed its nick***\n");
+	}
+
+}
 
 void handleNewConnection ()
 {
@@ -142,7 +178,11 @@ void handleContent (struct User* user)
 	{
 		if (strncmp(buffer, "/nick ", 6) == 0)
 		{
+			char* newnick = (char*) malloc(sizeof(char) * (readcount - 6));
+			strncpy(newnick, buffer + 6, readcount - 7);
+			newnick[readcount - 1] = '\0';
 			
+			setNick(user, newnick);
 		}
 		else
 		{
