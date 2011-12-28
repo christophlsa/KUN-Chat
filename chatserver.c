@@ -35,14 +35,42 @@ void debugUserPrint ()
 	}
 }
 
-void sendToAll (struct User* user, char* msg)
+void sendToAllFromUser (struct User* user, char* msg)
 {
 	int msg2sendsize = (strlen(user->nick) + strlen(msg) + 3);
 	char* msg2send = (char*) malloc(sizeof(char) * msg2sendsize);
+	if (msg2send == NULL)
+	{
+		printf("Speicherallokationsfehler\n");
+		exit(1);
+	}
 	snprintf(msg2send, msg2sendsize, "%s: %s", user->nick, msg);
 
 	printf(msg2send);
 
+	int i;
+	for (i = 1; i < poll_count; i++)
+	{
+		if (fds[i].fd != 0)
+			write(fds[i].fd, msg2send, msg2sendsize-1);
+	}
+	
+	free(msg2send);
+}
+
+void sendToAll (char* msg)
+{
+	int msg2sendsize = (strlen(msg) + 3);
+	char* msg2send = (char*) malloc(sizeof(char) * msg2sendsize);
+	if (msg2send == NULL)
+	{
+		printf("Speicherallokationsfehler\n");
+		exit(1);
+	}
+	snprintf(msg2send, msg2sendsize, "* %s", msg);
+	
+	printf(msg2send);
+	
 	int i;
 	for (i = 1; i < poll_count; i++)
 	{
@@ -60,9 +88,14 @@ void sendToUser (struct User* user, char* msg)
 
 	int msg2sendsize = (strlen(msg) + 3);
 	char* msg2send = (char*) malloc(sizeof(char) * msg2sendsize);
+	if (msg2send == NULL)
+	{
+		printf("Speicherallokationsfehler\n");
+		exit(1);
+	}
 	snprintf(msg2send, msg2sendsize, "* %s", msg);
 	
-	printf(msg2send);
+	printf("(to %s): %s", user->nick, msg2send);
 	
 	write(fds[user->pollfd].fd, msg2send, msg2sendsize-1);
 	
@@ -125,7 +158,16 @@ void setNick (struct User* user, char* newnick)
 		if (user->nick[nicklen - 1] != '\0')
 			user->nick[nicklen] = '\0';
 		
-		sendToAll(user, "***changed its nick***\n");
+		int msg2sendsize = strlen(oldnick) + strlen(user->nick) + 23;
+		char* msg2send = (char*) malloc(sizeof(char) * msg2sendsize);
+		if (msg2send == NULL)
+		{
+			printf("Speicherallokationsfehler\n");
+			exit(1);
+		}
+		sprintf(msg2send, "%s changed its nick to %s\n", oldnick, user->nick);
+		sendToAll(msg2send);
+		free(msg2send);
 	}
 
 }
@@ -162,7 +204,16 @@ void handleNewConnection ()
 		
 		setNick(&(users[user_count-1]), NULL);
 		
-		sendToAll(&(users[user_count-1]), "***connected to chat***\n");
+		int msg2sendsize = strlen(users[user_count-1].nick) + 19;
+		char* msg2send = (char*) malloc(sizeof(char) * msg2sendsize);
+		if (msg2send == NULL)
+		{
+			printf("Speicherallokationsfehler\n");
+			exit(1);
+		}
+		sprintf(msg2send, "%s joined this chat\n", users[user_count-1].nick);
+		sendToAll(msg2send);
+		free(msg2send);
 	}
 }
 
@@ -176,7 +227,16 @@ void handleDisconnect (int socknum)
 	struct User* user = findUserBySocketNumber(socknum);
 	user->active = 0;
 	
-	sendToAll(user, "***disconnected***\n");
+	int msg2sendsize = strlen(users->nick) + 19;
+	char* msg2send = (char*) malloc(sizeof(char) * msg2sendsize);
+	if (msg2send == NULL)
+	{
+		printf("Speicherallokationsfehler\n");
+		exit(1);
+	}
+	sprintf(msg2send, "%s leaved this chat\n", user->nick);
+	sendToAll(msg2send);
+	free(msg2send);
 }
 
 void handleContent (struct User* user)
@@ -231,7 +291,7 @@ void handleContent (struct User* user)
 		}
 		else
 		{
-			sendToAll(user, buffer);
+			sendToAllFromUser(user, buffer);
 		}
 	}
 }
