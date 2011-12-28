@@ -214,9 +214,9 @@ void handleContent (struct User* user)
 		}
 		else if (strncmp(buffer, "/list", 5) == 0)
 		{
-			int msgcount = 13;
-			char* userlistmsg = (char*) malloc(sizeof(char) * msgcount);
-			strcpy(userlistmsg, "User list: [");
+			sendToUser(user, "User list:\n");
+			
+			char userlistmsg[14];
 			
 			int i;
 			for (i = 0; i < user_count; i++)
@@ -224,29 +224,10 @@ void handleContent (struct User* user)
 				if (users[i].active == 0)
 					continue;
 				
-				msgcount += strlen(users[i].nick) + 1;
-				userlistmsg = realloc(userlistmsg, sizeof(char) * msgcount);
-				if (userlistmsg == NULL)
-				{
-					printf("Speicherallokationsfehler\n");
-					exit(1);
-				}
-				strcat(userlistmsg, " ");
-				strcat(userlistmsg, users[i].nick);
+				sprintf(userlistmsg, "-> %s\n", users[i].nick);
+				
+				sendToUser(user, userlistmsg);
 			}
-			
-			msgcount += 3;
-			userlistmsg = realloc(userlistmsg, sizeof(char) * msgcount);
-			if (userlistmsg == NULL)
-			{
-				printf("Speicherallokationsfehler\n");
-				exit(1);
-			}
-			strcat(userlistmsg, " ]\n");
-			
-			sendToUser(user, userlistmsg);
-			
-			free(userlistmsg);
 		}
 		else
 		{
