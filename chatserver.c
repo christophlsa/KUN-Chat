@@ -101,7 +101,7 @@ void setNick (struct User* user, char* newnick)
 {
 	if (newnick == NULL)
 	{
-		snprintf(user->nick, 10, "User %04d", ++nick_count);
+		snprintf(user->nick, 10, "User%05d", ++nick_count);
 	}
 	else
 	{
@@ -110,7 +110,7 @@ void setNick (struct User* user, char* newnick)
 			sendToUser(user, "This nick already exists.\n");
 			return;
 		}
-		else if (strncmp(newnick, "User ", 5) == 0)
+		else if (strncmp(newnick, "User", 5) == 0)
 		{
 			sendToUser(user, "This nick is not allowed.\n");
 			return;
