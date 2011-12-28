@@ -14,7 +14,7 @@
 struct User
 {
 	int pollfd;
-	char* nick;
+	char nick[10];
 	int active;
 };
 
@@ -22,7 +22,18 @@ int user_count = 0;
 int nick_count = 0;
 int poll_count = 1;
 struct pollfd* fds;
-struct User* user;
+struct User* users;
+
+void debugUserPrint ()
+{
+	printf("# user count: %d\n", user_count);
+	
+	int i;
+	for (i = 0; i < user_count; i++)
+	{
+		printf("# -> [%d]: %s\n", i, users[i].nick);
+	}
+}
 
 void sendToAll (struct User* user, char* msg)
 {
@@ -38,18 +49,24 @@ void sendToAll (struct User* user, char* msg)
 		if (fds[i].fd != 0)
 			write(fds[i].fd, msg2send, msg2sendsize-1);
 	}
+	
+	free(msg2send);
 }
 
 void sendToUser (struct User* user, char* msg)
 {
+	if (fds[user->pollfd].fd == 0)
+		return;
+
 	int msg2sendsize = (strlen(msg) + 3);
 	char* msg2send = (char*) malloc(sizeof(char) * msg2sendsize);
 	snprintf(msg2send, msg2sendsize, "* %s", msg);
 	
 	printf(msg2send);
 	
-	if (fds[user->pollfd].fd != 0)
-		write(fds[user->pollfd].fd, msg2send, msg2sendsize-1);
+	write(fds[user->pollfd].fd, msg2send, msg2sendsize-1);
+	
+	free(msg2send);
 }
 
 struct User* findUserBySocketNumber (int socknum)
@@ -57,9 +74,9 @@ struct User* findUserBySocketNumber (int socknum)
 	int i;
 	for (i = 0; i < user_count; i++)
 	{
-		if (user[i].pollfd == socknum)
+		if (users[i].pollfd == socknum)
 		{
-			return &(user[i]);
+			return &(users[i]);
 		}
 	}
 	
@@ -71,9 +88,9 @@ struct User* findUserByName (char* name)
 	int i;
 	for (i = 0; i < user_count; i++)
 	{
-		if (strcmp(user[i].nick, name) == 0)
+		if (strcmp(users[i].nick, name) == 0)
 		{
-			return &(user[i]);
+			return &(users[i]);
 		}
 	}
 	
@@ -84,7 +101,6 @@ void setNick (struct User* user, char* newnick)
 {
 	if (newnick == NULL)
 	{
-		user->nick = (char*) malloc(sizeof(char) * 10);
 		snprintf(user->nick, 10, "User %04d", ++nick_count);
 	}
 	else
@@ -103,8 +119,7 @@ void setNick (struct User* user, char* newnick)
 		char oldnick[strlen(user->nick)];
 		strcpy(oldnick, user->nick);
 	
-		int nicklen = strnlen(newnick, 20);
-		user->nick = (char*) realloc(user->nick, sizeof(char) * (nicklen + 1));
+		int nicklen = strnlen(newnick, 9);
 		strncpy(user->nick, newnick, nicklen);
 		
 		if (user->nick[nicklen - 1] != '\0')
@@ -126,17 +141,28 @@ void handleNewConnection ()
 	}
 	else
 	{
-		fds = (struct pollfd*) realloc(fds, sizeof(struct pollfd) * ++poll_count);
+		fds = realloc(fds, sizeof(struct pollfd) * ++poll_count);
+		if (fds == NULL)
+		{
+			printf("Speicherallokationsfehler\n");
+			exit(1);
+		}
 		fds[poll_count-1].fd = peer_addr;
 		fds[poll_count-1].events = POLLIN;
 		
-		user = (struct User*) realloc(user, sizeof(struct User) * ++user_count);
-		user[user_count-1].pollfd = poll_count-1;
-		user[user_count-1].active = 1;
+		users = realloc(users, sizeof(struct User) * ++user_count);
+		if (users == NULL)
+		{
+			printf("Speicherallokationsfehler\n");
+			exit(1);
+		}
+		users[user_count-1].pollfd = poll_count-1;
+		users[user_count-1].nick[0] = '\0';
+		users[user_count-1].active = 1;
 		
-		setNick(&(user[user_count-1]), NULL);
+		setNick(&(users[user_count-1]), NULL);
 		
-		sendToAll(&(user[user_count-1]), "***connected to chat***\n");
+		sendToAll(&(users[user_count-1]), "***connected to chat***\n");
 	}
 }
 
@@ -183,6 +209,44 @@ void handleContent (struct User* user)
 			newnick[readcount - 1] = '\0';
 			
 			setNick(user, newnick);
+			
+			free(newnick);
+		}
+		else if (strncmp(buffer, "/list", 5) == 0)
+		{
+			int msgcount = 13;
+			char* userlistmsg = (char*) malloc(sizeof(char) * msgcount);
+			strcpy(userlistmsg, "User list: [");
+			
+			int i;
+			for (i = 0; i < user_count; i++)
+			{
+				if (users[i].active == 0)
+					continue;
+				
+				msgcount += strlen(users[i].nick) + 1;
+				userlistmsg = realloc(userlistmsg, sizeof(char) * msgcount);
+				if (userlistmsg == NULL)
+				{
+					printf("Speicherallokationsfehler\n");
+					exit(1);
+				}
+				strcat(userlistmsg, " ");
+				strcat(userlistmsg, users[i].nick);
+			}
+			
+			msgcount += 3;
+			userlistmsg = realloc(userlistmsg, sizeof(char) * msgcount);
+			if (userlistmsg == NULL)
+			{
+				printf("Speicherallokationsfehler\n");
+				exit(1);
+			}
+			strcat(userlistmsg, " ]\n");
+			
+			sendToUser(user, userlistmsg);
+			
+			free(userlistmsg);
 		}
 		else
 		{
@@ -194,7 +258,7 @@ void handleContent (struct User* user)
 int main (int argc, char *argv[])
 {
 	fds = (struct pollfd*) malloc(sizeof(struct pollfd) * poll_count);
-	user = (struct User*) malloc(sizeof(struct User) * 0);
+	users = (struct User*) malloc(sizeof(struct User) * 1);
 
 	int sfd;
 	struct sockaddr_in my_addr;
