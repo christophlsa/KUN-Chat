@@ -6,7 +6,7 @@ ifeq (64,$(findstring 64,$(shell uname -m)))
 endif
 
 CC	= gcc
-CFLAGS  += -Wall -g -Iinclude
+CFLAGS  += -Wall -g -Iinclude -D_GNU_SOURCE
 LDFLAGS += -Llib
 LDLIBS  += -lcnaiapi$(ARCH64) -lchatgui$(ARCH64) -lpthread
 
