@@ -274,6 +274,11 @@ void handleContent (struct User* user)
 		if (strncmp(buffer, "/nick ", 6) == 0)
 		{
 			char* newnick = (char*) malloc(sizeof(char) * (readcount - 6));
+			if (newnick == NULL)
+			{
+				printf("Speicherallokationsfehler\n");
+				exit(1);
+			}
 			strncpy(newnick, buffer + 6, readcount - 7);
 			newnick[readcount - 1] = '\0';
 
@@ -357,7 +362,17 @@ void handleContent (struct User* user)
 int main (int argc, char *argv[])
 {
 	fds = (struct pollfd*) malloc(sizeof(struct pollfd) * poll_count);
+	if (fds == NULL)
+	{
+		printf("Speicherallokationsfehler\n");
+		exit(1);
+	}
 	users = (struct User*) malloc(sizeof(struct User) * 1);
+	if (users == NULL)
+	{
+		printf("Speicherallokationsfehler\n");
+		exit(1);
+	}
 
 	int sfd;
 	struct sockaddr_in my_addr;
