@@ -273,14 +273,14 @@ void handleContent (struct User* user)
 	{
 		if (strncmp(buffer, "/nick ", 6) == 0)
 		{
-			char* newnick = (char*) malloc(sizeof(char) * (readcount - 6));
-			if (newnick == NULL)
+			char* newnick;
+			int newnicksize = asprintf(&newnick, "%s", buffer + 6);
+			if (newnicksize < 0)
 			{
 				printf("Speicherallokationsfehler\n");
 				exit(1);
 			}
-			strncpy(newnick, buffer + 6, readcount - 7);
-			newnick[readcount - 1] = '\0';
+			newnick = newlineReplace(newnick);
 
 			setNick(user, newnick);
 
