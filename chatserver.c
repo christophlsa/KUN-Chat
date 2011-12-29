@@ -50,7 +50,7 @@ void sendToAllFromUser (struct User* user, char* msg)
 	msg = newlineReplace(msg);
 
 	char* msg2send;
-	int msg2sendsize = asprintf(&msg2send, "%s: %s\n", user->nick, msg);
+	int msg2sendsize = asprintf(&msg2send, "%s: %s", user->nick, msg);
 	if (msg2sendsize < 0)
 	{
 		printf("Speicherallokationsfehler\n");
@@ -153,12 +153,12 @@ void setNick (struct User* user, char* newnick)
 	{
 		if (findUserByName(newnick) != NULL)
 		{
-			sendToUser(user, "This nick already exists.\n");
+			sendToUser(user, "This nick already exists.");
 			return;
 		}
 		else if (strncmp(newnick, "User", 5) == 0)
 		{
-			sendToUser(user, "This nick is not allowed.\n");
+			sendToUser(user, "This nick is not allowed.");
 			return;
 		}
 
@@ -172,7 +172,7 @@ void setNick (struct User* user, char* newnick)
 			user->nick[nicklen] = '\0';
 
 		char* msg2send;
-		int msg2sendsize = asprintf(&msg2send, "%s changed its nick to %s\n", oldnick, user->nick);
+		int msg2sendsize = asprintf(&msg2send, "%s changed its nick to %s.", oldnick, user->nick);
 		if (msg2sendsize < 0)
 		{
 			printf("Speicherallokationsfehler\n");
@@ -216,7 +216,7 @@ void handleNewConnection ()
 		setNick(&(users[user_count-1]), NULL);
 
 		char* msg2send;
-		int msg2sendsize = asprintf(&msg2send, "%s joined this chat\n", users[user_count-1].nick);
+		int msg2sendsize = asprintf(&msg2send, "%s joined this chat.", users[user_count-1].nick);
 		if (msg2sendsize < 0)
 		{
 			printf("Speicherallokationsfehler\n");
@@ -238,7 +238,7 @@ void handleDisconnect (int socknum)
 	user->active = 0;
 
 	char* msg2send;
-	int msg2sendsize = asprintf(&msg2send, "%s leaved this chat\n", user->nick);
+	int msg2sendsize = asprintf(&msg2send, "%s leaved this chat.", user->nick);
 	if (msg2sendsize < 0)
 	{
 		printf("Speicherallokationsfehler\n");
@@ -283,7 +283,7 @@ void handleContent (struct User* user)
 		}
 		else if (strncmp(buffer, "/list", 5) == 0)
 		{
-			sendToUser(user, "User list:\n");
+			sendToUser(user, "User list:");
 
 			char userlistmsg[14];
 
@@ -293,7 +293,7 @@ void handleContent (struct User* user)
 				if (users[i].active == 0)
 					continue;
 
-				sprintf(userlistmsg, "-> %s\n", users[i].nick);
+				sprintf(userlistmsg, "-> %s", users[i].nick);
 
 				sendToUser(user, userlistmsg);
 			}
@@ -304,7 +304,7 @@ void handleContent (struct User* user)
 
 			if (endOfNick == NULL)
 			{
-				sendToUser(user, "wrong usage of /msg\n");
+				sendToUser(user, "wrong usage of /msg.");
 				return;
 			}
 
@@ -322,7 +322,7 @@ void handleContent (struct User* user)
 
 			if (touser == NULL)
 			{
-				sendToUser(user, "this user does not exists.\n");
+				sendToUser(user, "this user does not exists.");
 				return;
 			}
 
