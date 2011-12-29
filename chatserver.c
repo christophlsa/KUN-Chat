@@ -15,6 +15,8 @@ struct User
 {
 	int pollfd;
 	char nick[10];
+	char* buffer;
+	int bufferlen;
 	int active;
 };
 
@@ -48,7 +50,15 @@ char* newlineCut (char* str)
 	if (newline == NULL)
 		return str;
 
-	return strndup(str, newline - str);
+	char* newstr = strndup(str, newline - str);
+
+	if (newstr == NULL)
+	{
+		printf("Speicherallokationsfehler\n");
+		exit(1);
+	}
+
+	return newstr;
 }
 
 /**
@@ -59,7 +69,7 @@ void sendToAllFromUser (struct User* user, char* msg)
 	msg = newlineCut(msg);
 
 	char* msg2send;
-	int msg2sendsize = asprintf(&msg2send, "%s: %s", user->nick, msg);
+	int msg2sendsize = asprintf(&msg2send, "%s: %s\n", user->nick, msg);
 	if (msg2sendsize < 0)
 	{
 		printf("Speicherallokationsfehler\n");
@@ -238,6 +248,14 @@ void handleNewConnection ()
 		}
 		users[user_count-1].pollfd = poll_count-1;
 		users[user_count-1].nick[0] = '\0';
+		users[user_count-1].bufferlen = 1;
+		users[user_count-1].buffer = (char*) malloc(sizeof(char) * users[user_count-1].bufferlen);
+		if (users[user_count-1].buffer == NULL)
+		{
+			printf("Speicherallokationsfehler\n");
+			exit(1);
+		}
+		users[user_count-1].buffer[0] = '\0';
 		users[user_count-1].active = 1;
 
 		setNick(&(users[user_count-1]), NULL);
@@ -279,6 +297,98 @@ void handleDisconnect (int socknum)
 }
 
 /**
+ * Handles with message.
+ */
+void handleMessage (struct User* user, char* content)
+{
+	if (strncmp(content, "/nick ", 6) == 0)
+	{
+		char* newnick;
+		int newnicksize = asprintf(&newnick, "%s", content + 6);
+		if (newnicksize < 0)
+		{
+			printf("Speicherallokationsfehler\n");
+			exit(1);
+		}
+		newnick = newlineCut(newnick);
+
+		setNick(user, newnick);
+
+		free(newnick);
+	}
+	else if (strncmp(content, "/list", 5) == 0)
+	{
+		sendToUser(user, "User list:");
+
+		char userlistmsg[14];
+
+		int i;
+		for (i = 0; i < user_count; i++)
+		{
+			if (users[i].active == 0)
+				continue;
+
+			sprintf(userlistmsg, "-> %s", users[i].nick);
+
+			sendToUser(user, userlistmsg);
+		}
+	}
+	else if (strncmp(content, "/msg ", 5) == 0)
+	{
+		char* endOfNick = strchr(content + 5, ' ');
+
+		if (endOfNick == NULL)
+		{
+			sendToUser(user, "wrong usage of /msg.");
+			return;
+		}
+
+		int nickLen = endOfNick - (content + 5) + 1;
+		char* nick = (char*) malloc(sizeof(char) * nickLen);
+		if (nick == NULL)
+		{
+			printf("Speicherallokationsfehler\n");
+			exit(1);
+		}
+		strncpy(nick, content + 5, nickLen);
+		nick[nickLen - 1] = '\0';
+
+		struct User* touser = findUserByName(nick);
+
+		if (touser == NULL)
+		{
+			sendToUser(user, "this user does not exists.");
+			return;
+		}
+
+		char* msg;
+		int msgsize = asprintf(&msg, "%s send to you: %s", user->nick, content + 5 + nickLen);
+		if (msgsize < 0)
+		{
+			printf("Speicherallokationsfehler\n");
+			exit(1);
+		}
+		msg = newlineCut(msg);
+
+		char* msg2;
+		int msg2size = asprintf(&msg2, "you send to %s: %s", touser->nick, content + 5 + nickLen);
+		if (msg2size < 0)
+		{
+			printf("Speicherallokationsfehler\n");
+			exit(1);
+		}
+		msg2 = newlineCut(msg2);
+
+		sendToUser(touser, msg);
+		sendToUser(user, msg2);
+	}
+	else
+	{
+		sendToAllFromUser(user, content);
+	}
+}
+
+/**
  * Reads messages from connection.
  */
 void handleContent (struct User* user)
@@ -290,8 +400,8 @@ void handleContent (struct User* user)
 	}
 
 	char buffer[1025];
+
 	int readcount = read(fds[user->pollfd].fd, buffer, 1024);
-	buffer[readcount] = '\0';
 
 	if (readcount < 0)
 	{
@@ -304,92 +414,40 @@ void handleContent (struct User* user)
 	}
 	else
 	{
-		if (strncmp(buffer, "/nick ", 6) == 0)
-		{
-			char* newnick;
-			int newnicksize = asprintf(&newnick, "%s", buffer + 6);
-			if (newnicksize < 0)
-			{
-				printf("Speicherallokationsfehler\n");
-				exit(1);
-			}
-			newnick = newlineCut(newnick);
+		buffer[readcount] = '\0';
 
-			setNick(user, newnick);
-
-			free(newnick);
-		}
-		else if (strncmp(buffer, "/list", 5) == 0)
-		{
-			sendToUser(user, "User list:");
-
-			char userlistmsg[14];
-
-			int i;
-			for (i = 0; i < user_count; i++)
-			{
-				if (users[i].active == 0)
-					continue;
-
-				sprintf(userlistmsg, "-> %s", users[i].nick);
-
-				sendToUser(user, userlistmsg);
-			}
-		}
-		else if (strncmp(buffer, "/msg ", 5) == 0)
-		{
-			char* endOfNick = strchr(buffer + 5, ' ');
-
-			if (endOfNick == NULL)
-			{
-				sendToUser(user, "wrong usage of /msg.");
-				return;
-			}
-
-			int nickLen = endOfNick - (buffer + 5) + 1;
-			char* nick = (char*) malloc(sizeof(char) * nickLen);
-			if (nick == NULL)
-			{
-				printf("Speicherallokationsfehler\n");
-				exit(1);
-			}
-			strncpy(nick, buffer + 5, nickLen);
-			nick[nickLen - 1] = '\0';
-
-			struct User* touser = findUserByName(nick);
-
-			if (touser == NULL)
-			{
-				sendToUser(user, "this user does not exists.");
-				return;
-			}
-
-			char* msg;
-			int msgsize = asprintf(&msg, "%s send to you: %s", user->nick, buffer + 5 + nickLen);
-			if (msgsize < 0)
-			{
-				printf("Speicherallokationsfehler\n");
-				exit(1);
-			}
-			msg = newlineCut(msg);
-
-			char* msg2;
-			int msg2size = asprintf(&msg2, "you send to %s: %s", touser->nick, buffer + 5 + nickLen);
-			if (msg2size < 0)
-			{
-				printf("Speicherallokationsfehler\n");
-				exit(1);
-			}
-			msg2 = newlineCut(msg2);
-
-			sendToUser(touser, msg);
-			sendToUser(user, msg2);
-		}
-		else
-		{
-			sendToAllFromUser(user, buffer);
-		}
+		user->bufferlen += readcount;
+		user->buffer = (char*) realloc(user->buffer, sizeof(char) * readcount);
+		strcat(user->buffer, buffer);
 	}
+
+	char* newline;
+	char* newcontent;
+	char* content = user->buffer;
+
+	while ((newline = strchr(content, '\n')) && newline != NULL)
+	{
+		newcontent = strndup(content, newline - content + 1);
+		if (newcontent == NULL)
+		{
+			printf("Speicherallokationsfehler\n");
+			exit(1);
+		}
+		handleMessage(user, newcontent);
+		free(newcontent);
+		content = newline;
+		content++;
+	}
+
+	newcontent = strdup(content);
+	if (newcontent == NULL)
+	{
+		printf("Speicherallokationsfehler\n");
+		exit(1);
+	}
+	user->bufferlen = strlen(newcontent) + 1;
+	free(user->buffer);
+	user->buffer = newcontent;
 }
 
 /**
