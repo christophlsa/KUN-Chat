@@ -42,15 +42,14 @@ void debugUserPrint ()
 
 /**
  * Cut all characters from beginning of newline.
+ *
+ * Memory for the new string is obtained with malloc(3), and can be freed with free(3).
  */
 char* newlineCut (char* str)
 {
 	char* newline = strchr(str, '\n');
 
-	if (newline == NULL)
-		return str;
-
-	char* newstr = strndup(str, newline - str);
+	char* newstr = (newline == NULL) ? strdup(str) : strndup(str, newline - str);
 
 	if (newstr == NULL)
 	{
@@ -85,6 +84,7 @@ void sendToAllFromUser (struct User* user, char* msg)
 			write(fds[i].fd, msg2send, msg2sendsize);
 	}
 
+	free(msg);
 	free(msg2send);
 }
 
@@ -112,6 +112,7 @@ void sendToAll (char* msg)
 			write(fds[i].fd, msg2send, msg2sendsize);
 	}
 
+	free(msg);
 	free(msg2send);
 }
 
@@ -137,6 +138,7 @@ void sendToUser (struct User* user, char* msg)
 
 	write(fds[user->pollfd].fd, msg2send, msg2sendsize);
 
+	free(msg);
 	free(msg2send);
 }
 
@@ -310,11 +312,12 @@ void handleMessage (struct User* user, char* content)
 			printf("Speicherallokationsfehler\n");
 			exit(1);
 		}
-		newnick = newlineCut(newnick);
+		char* newnick_wo_newline = newlineCut(newnick);
 
-		setNick(user, newnick);
+		setNick(user, newnick_wo_newline);
 
 		free(newnick);
+		free(newnick_wo_newline);
 	}
 	else if (strncmp(content, "/list", 5) == 0)
 	{
@@ -368,7 +371,12 @@ void handleMessage (struct User* user, char* content)
 			printf("Speicherallokationsfehler\n");
 			exit(1);
 		}
-		msg = newlineCut(msg);
+		char* msg_wo_newline = newlineCut(msg);
+
+		sendToUser(touser, msg_wo_newline);
+
+		free(msg);
+		free(msg_wo_newline);
 
 		char* msg2;
 		int msg2size = asprintf(&msg2, "you send to %s: %s", touser->nick, content + 5 + nickLen);
@@ -377,10 +385,12 @@ void handleMessage (struct User* user, char* content)
 			printf("Speicherallokationsfehler\n");
 			exit(1);
 		}
-		msg2 = newlineCut(msg2);
+		char* msg2_wo_newline = newlineCut(msg2);
 
-		sendToUser(touser, msg);
-		sendToUser(user, msg2);
+		sendToUser(user, msg2_wo_newline);
+
+		free(msg2);
+		free(msg2_wo_newline);
 	}
 	else
 	{
