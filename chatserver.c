@@ -241,6 +241,7 @@ void handleNewConnection ()
 		}
 		fds[poll_count-1].fd = peer_addr;
 		fds[poll_count-1].events = POLLIN;
+		fds[poll_count-1].revents = 0;
 
 		users = realloc(users, sizeof(struct User) * ++user_count);
 		if (users == NULL)
@@ -357,6 +358,7 @@ void handleMessage (struct User* user, char* content)
 		nick[nickLen - 1] = '\0';
 
 		struct User* touser = findUserByName(nick);
+		free(nick);
 
 		if (touser == NULL)
 		{
@@ -427,7 +429,7 @@ void handleContent (struct User* user)
 		buffer[readcount] = '\0';
 
 		user->bufferlen += readcount;
-		user->buffer = (char*) realloc(user->buffer, sizeof(char) * readcount);
+		user->buffer = (char*) realloc(user->buffer, sizeof(char) * user->bufferlen);
 		strcat(user->buffer, buffer);
 	}
 
@@ -458,6 +460,15 @@ void handleContent (struct User* user)
 	user->bufferlen = strlen(newcontent) + 1;
 	free(user->buffer);
 	user->buffer = newcontent;
+	free(newcontent);
+}
+
+void handlequit ()
+{
+	free(fds);
+	free(users);
+
+	exit(0);
 }
 
 /**
@@ -465,6 +476,9 @@ void handleContent (struct User* user)
  */
 int main (int argc, char *argv[])
 {
+	signal(SIGINT, handlequit);
+	signal(SIGQUIT, handlequit);
+
 	fds = (struct pollfd*) malloc(sizeof(struct pollfd) * poll_count);
 	if (fds == NULL)
 	{
@@ -503,6 +517,7 @@ int main (int argc, char *argv[])
 
 	fds[0].fd = sfd;
 	fds[0].events = POLLIN;
+	fds[0].revents = 0;
 
 	while (1)
 	{
@@ -536,6 +551,8 @@ int main (int argc, char *argv[])
 			}
 		}
 	}
+
+	handlequit();
 
 	return 0;
 }
