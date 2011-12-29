@@ -24,6 +24,9 @@ int poll_count = 1;
 struct pollfd* fds;
 struct User* users;
 
+/**
+ * Prints all connected users to console (for debugging).
+ */
 void debugUserPrint ()
 {
 	printf("# user count: %d\n", user_count);
@@ -35,7 +38,10 @@ void debugUserPrint ()
 	}
 }
 
-char* newlineReplace (char* str)
+/**
+ * Cut all characters from beginning of newline.
+ */
+char* newlineCut (char* str)
 {
 	char* newline = strchr(str, '\n');
 
@@ -45,9 +51,12 @@ char* newlineReplace (char* str)
 	return strndup(str, newline - str);
 }
 
+/**
+ * Send message written by user to all users.
+ */
 void sendToAllFromUser (struct User* user, char* msg)
 {
-	msg = newlineReplace(msg);
+	msg = newlineCut(msg);
 
 	char* msg2send;
 	int msg2sendsize = asprintf(&msg2send, "%s: %s", user->nick, msg);
@@ -69,9 +78,12 @@ void sendToAllFromUser (struct User* user, char* msg)
 	free(msg2send);
 }
 
+/**
+ * Send status message to all users.
+ */
 void sendToAll (char* msg)
 {
-	msg = newlineReplace(msg);
+	msg = newlineCut(msg);
 
 	char* msg2send;
 	int msg2sendsize = asprintf(&msg2send, "* %s\n", msg);
@@ -93,12 +105,15 @@ void sendToAll (char* msg)
 	free(msg2send);
 }
 
+/**
+ * Send status message to only one user.
+ */
 void sendToUser (struct User* user, char* msg)
 {
 	if (fds[user->pollfd].fd == 0)
 		return;
 
-	msg = newlineReplace(msg);
+	msg = newlineCut(msg);
 
 	char* msg2send;
 	int msg2sendsize = asprintf(&msg2send, "* %s\n", msg);
@@ -115,6 +130,9 @@ void sendToUser (struct User* user, char* msg)
 	free(msg2send);
 }
 
+/**
+ * Returns user with given number of socket.
+ */
 struct User* findUserBySocketNumber (int socknum)
 {
 	int i;
@@ -129,6 +147,9 @@ struct User* findUserBySocketNumber (int socknum)
 	return NULL;
 }
 
+/**
+ * Returns user with given nick.
+ */
 struct User* findUserByName (char* name)
 {
 	int i;
@@ -143,6 +164,9 @@ struct User* findUserByName (char* name)
 	return NULL;
 }
 
+/**
+ * Set new nick of user. For new user a new nick will be generated.
+ */
 void setNick (struct User* user, char* newnick)
 {
 	if (newnick == NULL)
@@ -183,6 +207,9 @@ void setNick (struct User* user, char* newnick)
 	}
 }
 
+/**
+ * Accepts new connection and creates new user and in poll array.
+ */
 void handleNewConnection ()
 {
 	int peer_addr = accept(fds[0].fd, NULL, NULL);
@@ -227,6 +254,9 @@ void handleNewConnection ()
 	}
 }
 
+/**
+ * Set user and socket as non active.
+ */
 void handleDisconnect (int socknum)
 {
 	close(fds[socknum].fd);
@@ -248,6 +278,9 @@ void handleDisconnect (int socknum)
 	free(msg2send);
 }
 
+/**
+ * Reads messages from connection.
+ */
 void handleContent (struct User* user)
 {
 	if (user == NULL)
@@ -280,7 +313,7 @@ void handleContent (struct User* user)
 				printf("Speicherallokationsfehler\n");
 				exit(1);
 			}
-			newnick = newlineReplace(newnick);
+			newnick = newlineCut(newnick);
 
 			setNick(user, newnick);
 
@@ -338,7 +371,7 @@ void handleContent (struct User* user)
 				printf("Speicherallokationsfehler\n");
 				exit(1);
 			}
-			msg = newlineReplace(msg);
+			msg = newlineCut(msg);
 
 			char* msg2;
 			int msg2size = asprintf(&msg2, "you send to %s: %s", touser->nick, buffer + 5 + nickLen);
@@ -347,7 +380,7 @@ void handleContent (struct User* user)
 				printf("Speicherallokationsfehler\n");
 				exit(1);
 			}
-			msg2 = newlineReplace(msg2);
+			msg2 = newlineCut(msg2);
 
 			sendToUser(touser, msg);
 			sendToUser(user, msg2);
@@ -359,6 +392,9 @@ void handleContent (struct User* user)
 	}
 }
 
+/**
+ * The beginning of all.
+ */
 int main (int argc, char *argv[])
 {
 	fds = (struct pollfd*) malloc(sizeof(struct pollfd) * poll_count);
