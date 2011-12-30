@@ -14,7 +14,7 @@
 struct User
 {
 	int pollfd;
-	char nick[10];
+	char nick[20];
 	char* buffer;
 	int bufferlen;
 	int active;
@@ -183,7 +183,7 @@ void setNick (struct User* user, char* newnick)
 {
 	if (newnick == NULL)
 	{
-		snprintf(user->nick, 10, "User%05d", ++nick_count);
+		snprintf(user->nick, 20, "User%d", ++nick_count);
 	}
 	else
 	{
@@ -201,7 +201,7 @@ void setNick (struct User* user, char* newnick)
 		char oldnick[strlen(user->nick)];
 		strcpy(oldnick, user->nick);
 
-		int nicklen = strnlen(newnick, 9);
+		int nicklen = strnlen(newnick, 19);
 		strncpy(user->nick, newnick, nicklen);
 		
 		if (user->nick[nicklen - 1] != '\0')
