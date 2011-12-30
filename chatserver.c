@@ -324,7 +324,7 @@ void handleMessage (struct User* user, char* content)
 	{
 		sendToUser(user, "User list:");
 
-		char userlistmsg[14];
+		char* userlistmsg;
 
 		int i;
 		for (i = 0; i < user_count; i++)
@@ -332,9 +332,15 @@ void handleMessage (struct User* user, char* content)
 			if (users[i].active == 0)
 				continue;
 
-			sprintf(userlistmsg, "-> %s", users[i].nick);
+			if (asprintf(&userlistmsg, "-> %s", users[i].nick) < 0)
+			{
+				fprintf(stderr, "Speicherallokationsfehler\n");
+				exit(1);
+			}
 
 			sendToUser(user, userlistmsg);
+			
+			free(userlistmsg);
 		}
 	}
 	else if (strncmp(content, "/msg ", 5) == 0)
