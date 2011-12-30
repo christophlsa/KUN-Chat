@@ -53,7 +53,7 @@ char* newlineCut (char* str)
 
 	if (newstr == NULL)
 	{
-		printf("Speicherallokationsfehler\n");
+		fprintf(stderr, "Speicherallokationsfehler\n");
 		exit(1);
 	}
 
@@ -71,7 +71,7 @@ void sendToAllFromUser (struct User* user, char* msg)
 	int msg2sendsize = asprintf(&msg2send, "%s: %s\n", user->nick, msg);
 	if (msg2sendsize < 0)
 	{
-		printf("Speicherallokationsfehler\n");
+		fprintf(stderr, "Speicherallokationsfehler\n");
 		exit(1);
 	}
 
@@ -99,7 +99,7 @@ void sendToAll (char* msg)
 	int msg2sendsize = asprintf(&msg2send, "* %s\n", msg);
 	if (msg2sendsize < 0)
 	{
-		printf("Speicherallokationsfehler\n");
+		fprintf(stderr, "Speicherallokationsfehler\n");
 		exit(1);
 	}
 
@@ -130,7 +130,7 @@ void sendToUser (struct User* user, char* msg)
 	int msg2sendsize = asprintf(&msg2send, "* %s\n", msg);
 	if (msg2sendsize < 0)
 	{
-		printf("Speicherallokationsfehler\n");
+		fprintf(stderr, "Speicherallokationsfehler\n");
 		exit(1);
 	}
 
@@ -211,7 +211,7 @@ void setNick (struct User* user, char* newnick)
 		int msg2sendsize = asprintf(&msg2send, "%s changed its nick to %s.", oldnick, user->nick);
 		if (msg2sendsize < 0)
 		{
-			printf("Speicherallokationsfehler\n");
+			fprintf(stderr, "Speicherallokationsfehler\n");
 			exit(1);
 		}
 		sendToAll(msg2send);
@@ -228,7 +228,7 @@ void handleNewConnection ()
 
 	if (peer_addr < 0)
 	{
-		printf("Client Socket Error: %s\n", strerror(errno));
+		fprintf(stderr, "Client Socket Error: %s\n", strerror(errno));
 		exit(1);
 	}
 	else
@@ -236,7 +236,7 @@ void handleNewConnection ()
 		fds = realloc(fds, sizeof(struct pollfd) * ++poll_count);
 		if (fds == NULL)
 		{
-			printf("Speicherallokationsfehler\n");
+			fprintf(stderr, "Speicherallokationsfehler\n");
 			exit(1);
 		}
 		fds[poll_count-1].fd = peer_addr;
@@ -246,7 +246,7 @@ void handleNewConnection ()
 		users = realloc(users, sizeof(struct User) * ++user_count);
 		if (users == NULL)
 		{
-			printf("Speicherallokationsfehler\n");
+			fprintf(stderr, "Speicherallokationsfehler\n");
 			exit(1);
 		}
 		users[user_count-1].pollfd = poll_count-1;
@@ -255,7 +255,7 @@ void handleNewConnection ()
 		users[user_count-1].buffer = (char*) malloc(sizeof(char) * users[user_count-1].bufferlen);
 		if (users[user_count-1].buffer == NULL)
 		{
-			printf("Speicherallokationsfehler\n");
+			fprintf(stderr, "Speicherallokationsfehler\n");
 			exit(1);
 		}
 		users[user_count-1].buffer[0] = '\0';
@@ -267,7 +267,7 @@ void handleNewConnection ()
 		int msg2sendsize = asprintf(&msg2send, "%s joined this chat.", users[user_count-1].nick);
 		if (msg2sendsize < 0)
 		{
-			printf("Speicherallokationsfehler\n");
+			fprintf(stderr, "Speicherallokationsfehler\n");
 			exit(1);
 		}
 		sendToAll(msg2send);
@@ -292,7 +292,7 @@ void handleDisconnect (int socknum)
 	int msg2sendsize = asprintf(&msg2send, "%s leaved this chat.", user->nick);
 	if (msg2sendsize < 0)
 	{
-		printf("Speicherallokationsfehler\n");
+		fprintf(stderr, "Speicherallokationsfehler\n");
 		exit(1);
 	}
 	sendToAll(msg2send);
@@ -310,7 +310,7 @@ void handleMessage (struct User* user, char* content)
 		int newnicksize = asprintf(&newnick, "%s", content + 6);
 		if (newnicksize < 0)
 		{
-			printf("Speicherallokationsfehler\n");
+			fprintf(stderr, "Speicherallokationsfehler\n");
 			exit(1);
 		}
 		char* newnick_wo_newline = newlineCut(newnick);
@@ -351,7 +351,7 @@ void handleMessage (struct User* user, char* content)
 		char* nick = (char*) malloc(sizeof(char) * nickLen);
 		if (nick == NULL)
 		{
-			printf("Speicherallokationsfehler\n");
+			fprintf(stderr, "Speicherallokationsfehler\n");
 			exit(1);
 		}
 		strncpy(nick, content + 5, nickLen);
@@ -370,7 +370,7 @@ void handleMessage (struct User* user, char* content)
 		int msgsize = asprintf(&msg, "%s send to you: %s", user->nick, content + 5 + nickLen);
 		if (msgsize < 0)
 		{
-			printf("Speicherallokationsfehler\n");
+			fprintf(stderr, "Speicherallokationsfehler\n");
 			exit(1);
 		}
 		char* msg_wo_newline = newlineCut(msg);
@@ -384,7 +384,7 @@ void handleMessage (struct User* user, char* content)
 		int msg2size = asprintf(&msg2, "you send to %s: %s", touser->nick, content + 5 + nickLen);
 		if (msg2size < 0)
 		{
-			printf("Speicherallokationsfehler\n");
+			fprintf(stderr, "Speicherallokationsfehler\n");
 			exit(1);
 		}
 		char* msg2_wo_newline = newlineCut(msg2);
@@ -407,7 +407,7 @@ void handleContent (struct User* user)
 {
 	if (user == NULL)
 	{
-		printf("user is NULL ?!?!\n");
+		fprintf(stderr, "user is NULL ?!?!\n");
 		exit(1);
 	}
 
@@ -417,7 +417,7 @@ void handleContent (struct User* user)
 
 	if (readcount < 0)
 	{
-		printf("Client Socket Error: %s\n", strerror(errno));
+		fprintf(stderr, "Client Socket Error: %s\n", strerror(errno));
 		exit(1);
 	}
 	else if (readcount == 0)
@@ -442,7 +442,7 @@ void handleContent (struct User* user)
 		newcontent = strndup(content, newline - content + 1);
 		if (newcontent == NULL)
 		{
-			printf("Speicherallokationsfehler\n");
+			fprintf(stderr, "Speicherallokationsfehler\n");
 			exit(1);
 		}
 		handleMessage(user, newcontent);
@@ -454,7 +454,7 @@ void handleContent (struct User* user)
 	newcontent = strdup(content);
 	if (newcontent == NULL)
 	{
-		printf("Speicherallokationsfehler\n");
+		fprintf(stderr, "Speicherallokationsfehler\n");
 		exit(1);
 	}
 	user->bufferlen = strlen(newcontent) + 1;
@@ -470,13 +470,13 @@ int main (int argc, char *argv[])
 	fds = (struct pollfd*) malloc(sizeof(struct pollfd) * poll_count);
 	if (fds == NULL)
 	{
-		printf("Speicherallokationsfehler\n");
+		fprintf(stderr, "Speicherallokationsfehler\n");
 		exit(1);
 	}
 	users = (struct User*) malloc(sizeof(struct User) * 1);
 	if (users == NULL)
 	{
-		printf("Speicherallokationsfehler\n");
+		fprintf(stderr, "Speicherallokationsfehler\n");
 		exit(1);
 	}
 
@@ -487,7 +487,7 @@ int main (int argc, char *argv[])
 
 	if (sfd == -1)
 	{
-		printf("cannot create socket\n");
+		fprintf(stderr, "cannot create socket\n");
 		exit(1);
 	}
 
@@ -513,7 +513,7 @@ int main (int argc, char *argv[])
 
 		if(pollr < 0)
 		{
-			printf("poll error: %s\n", strerror(errno));
+			fprintf(stderr, "poll error: %s\n", strerror(errno));
 			exit(1);
 		}
 		else if (pollr > 0)
