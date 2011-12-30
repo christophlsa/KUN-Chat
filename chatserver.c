@@ -460,15 +460,6 @@ void handleContent (struct User* user)
 	user->bufferlen = strlen(newcontent) + 1;
 	free(user->buffer);
 	user->buffer = newcontent;
-	free(newcontent);
-}
-
-void handlequit ()
-{
-	free(fds);
-	free(users);
-
-	exit(0);
 }
 
 /**
@@ -476,9 +467,6 @@ void handlequit ()
  */
 int main (int argc, char *argv[])
 {
-	signal(SIGINT, handlequit);
-	signal(SIGQUIT, handlequit);
-
 	fds = (struct pollfd*) malloc(sizeof(struct pollfd) * poll_count);
 	if (fds == NULL)
 	{
@@ -551,8 +539,6 @@ int main (int argc, char *argv[])
 			}
 		}
 	}
-
-	handlequit();
 
 	return 0;
 }
