@@ -86,9 +86,13 @@ void handleGUISocket ()
 int connectToServer (char* host, char* port)
 {
 	int sockfd, rv;
-	struct addrinfo *servinfo, *p;
+	struct addrinfo hints, *servinfo, *p;
 
-	if ((rv = getaddrinfo(host, port, NULL, &servinfo)) != 0)
+	memset(&hints, 0, sizeof hints);
+	hints.ai_family = AF_UNSPEC;
+	hints.ai_socktype = SOCK_STREAM;
+
+	if ((rv = getaddrinfo(host, port, &hints, &servinfo)) != 0)
 	{
 		fprintf(stderr, "getaddrinfo error: %s\n", gai_strerror(rv));
 		exit(1);
@@ -110,13 +114,13 @@ int connectToServer (char* host, char* port)
 		break;
 	}
 	
-	freeaddrinfo(servinfo);
-	
 	if (p == NULL)
 	{
 		fprintf(stderr, "Failed to connect to server.\n");
 		exit(1);
 	}
+	
+	freeaddrinfo(servinfo);
 	
 	printf("Connected to server.\n");
 	
