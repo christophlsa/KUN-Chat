@@ -17,11 +17,14 @@ APPS = chatclient chatserver
 
 apps: $(APPS)
 
-chatclient: chatclient.o
+chatclient: chatclient.o  commons.o
 	$(CC) $(LDFLAGS) $^ $(LDLIBS) $(GTKLDLIBS) -o $@
 
 chatgui.o: chatgui.c
 	$(CC) -c $(CFLAGS) $(GTKCFLAGS) -o $@ $^
+
+commons.o: commons.c
+	$(CC) -c $(CFLAGS) $(LDFLAGS) $^ $(LDLIBS) -o $@
 
 .PHONY: clean
 
