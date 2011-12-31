@@ -32,4 +32,4 @@ commons.o: commons.c
 .PHONY: clean
 
 clean:
-	rm -rf *.o $(APPS)
+	rm -rf *.o $(APPS) core
