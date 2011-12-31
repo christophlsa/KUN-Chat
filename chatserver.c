@@ -1,6 +1,6 @@
 /* chatserver.c */
 
-#include <cnaiapi.h>
+#include <unistd.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <poll.h>
@@ -10,6 +10,7 @@
 #include <string.h>
 #include <errno.h>
 #include <netdb.h>
+#include "commons.h"
 
 struct User
 {
@@ -25,6 +26,8 @@ int nick_count = 0;
 int poll_count = 1;
 struct pollfd* fds;
 struct User* users;
+
+struct User* currentUser;
 
 /**
  * Prints all connected users to console (for debugging).
@@ -278,14 +281,37 @@ void handleNewConnection ()
 /**
  * Set user and socket as non active.
  */
-void handleDisconnect (int socknum)
+void handleDisconnect (int socket)
 {
-	close(fds[socknum].fd);
+	int socknum = -1;
+
+	int i;
+	for (i = 0; i < poll_count; i++)
+	{
+		if (fds[i].fd == socket)
+		{
+			socknum = i;
+			break;
+		}
+	}
+
+	if (socknum == -1)
+	{
+		fprintf(stderr, "Could not find given socket in pollfd array.\n");
+		exit(1);
+	}
+
+	close(socket);
 
 	fds[socknum].fd = 0;
 	fds[socknum].events = 0;
 
 	struct User* user = findUserBySocketNumber(socknum);
+	if (user == NULL)
+	{
+		fprintf(stderr, "Could not find user for given socket.\n");
+		exit(1);
+	}
 	user->active = 0;
 
 	char* msg2send;
@@ -302,8 +328,10 @@ void handleDisconnect (int socknum)
 /**
  * Handles with message.
  */
-void handleMessage (struct User* user, char* content)
+void handleMessage (char* content)
 {
+	struct User* user = currentUser;
+
 	if (strncmp(content, "/nick ", 6) == 0)
 	{
 		char* newnick;
@@ -407,68 +435,6 @@ void handleMessage (struct User* user, char* content)
 }
 
 /**
- * Reads messages from connection.
- */
-void handleContent (struct User* user)
-{
-	if (user == NULL)
-	{
-		fprintf(stderr, "user is NULL ?!?!\n");
-		exit(1);
-	}
-
-	char buffer[1025];
-
-	int readcount = read(fds[user->pollfd].fd, buffer, 1024);
-
-	if (readcount < 0)
-	{
-		fprintf(stderr, "Client Socket Error: %s\n", strerror(errno));
-		exit(1);
-	}
-	else if (readcount == 0)
-	{
-		handleDisconnect(user->pollfd);
-	}
-	else
-	{
-		buffer[readcount] = '\0';
-
-		user->bufferlen += readcount;
-		user->buffer = (char*) realloc(user->buffer, sizeof(char) * user->bufferlen);
-		strcat(user->buffer, buffer);
-	}
-
-	char* newline;
-	char* newcontent;
-	char* content = user->buffer;
-
-	while ((newline = strchr(content, '\n')) && newline != NULL)
-	{
-		newcontent = strndup(content, newline - content + 1);
-		if (newcontent == NULL)
-		{
-			fprintf(stderr, "Speicherallokationsfehler\n");
-			exit(1);
-		}
-		handleMessage(user, newcontent);
-		free(newcontent);
-		content = newline;
-		content++;
-	}
-
-	newcontent = strdup(content);
-	if (newcontent == NULL)
-	{
-		fprintf(stderr, "Speicherallokationsfehler\n");
-		exit(1);
-	}
-	user->bufferlen = strlen(newcontent) + 1;
-	free(user->buffer);
-	user->buffer = newcontent;
-}
-
-/**
  * The beginning of all.
  */
 int main (int argc, char *argv[])
@@ -529,7 +495,7 @@ int main (int argc, char *argv[])
 			{
 				if (fds[i].revents & POLLHUP)
 				{
-					handleDisconnect(i);
+					handleDisconnect(fds[i].fd);
 				}
 				else if (fds[i].revents & POLLIN)
 				{
@@ -539,7 +505,8 @@ int main (int argc, char *argv[])
 					}
 					else
 					{
-						handleContent(findUserBySocketNumber(i));
+						currentUser = findUserBySocketNumber(i);
+						handleSocket(fds[i].fd, &(currentUser->buffer), &(currentUser->bufferlen), handleMessage, handleDisconnect);
 					}
 				}
 			}

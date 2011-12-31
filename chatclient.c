@@ -77,6 +77,12 @@ int connectToServer (char* host, char* port)
 	return sockfd;
 }
 
+void handleDisconnect (int sock)
+{
+	printf("Connection to %s closed.\n", sock == serverfd ? "Server" : "GUI");
+	exit(0);
+}
+
 int main (int argc, char *argv[])
 {
 	if (argc < 2 || argc > 3)
@@ -146,18 +152,17 @@ int main (int argc, char *argv[])
 			{
 				if (fds[i].revents & POLLHUP)
 				{
-					printf("Connection to %s closed.\n", i == 0 ? "Server" : "GUI");
-					exit(0);
+					handleDisconnect(fds[i].fd);
 				}
 				else if (fds[i].revents & POLLIN)
 				{
 					if (i == 0)
 					{
-						handleSocket(serverfd, &buffer, &bufferlen, handleMessageFromServer);
+						handleSocket(serverfd, &buffer, &bufferlen, handleMessageFromServer, handleDisconnect);
 					}
 					else if (i == 1)
 					{
-						handleSocket(inguifd, &buffer2, &bufferlen2, handleMessageFromGUI);
+						handleSocket(inguifd, &buffer2, &bufferlen2, handleMessageFromGUI, handleDisconnect);
 					}
 				}
 			}

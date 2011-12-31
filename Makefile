@@ -8,7 +8,7 @@ endif
 CC	= gcc
 CFLAGS  += -Wall -g -Iinclude -D_GNU_SOURCE
 LDFLAGS += -Llib
-LDLIBS  += -lcnaiapi$(ARCH64) -lchatgui$(ARCH64) -lpthread
+LDLIBS  += -lchatgui$(ARCH64) -lpthread
 
 GTKCFLAGS=$(shell pkg-config --cflags gtk+-2.0)
 GTKLDLIBS=$(shell pkg-config --libs gtk+-2.0)
@@ -17,7 +17,10 @@ APPS = chatclient chatserver
 
 apps: $(APPS)
 
-chatclient: chatclient.o  commons.o
+chatserver: chatserver.o commons.o
+	$(CC) $(LDFLAGS) $^ $(LDLIBS) -o $@
+
+chatclient: chatclient.o commons.o
 	$(CC) $(LDFLAGS) $^ $(LDLIBS) $(GTKLDLIBS) -o $@
 
 chatgui.o: chatgui.c

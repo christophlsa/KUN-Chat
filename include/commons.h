@@ -3,6 +3,6 @@
 
 #define BUFSIZE 1025
 
-void handleSocket (int socket, char** buffer, int* bufferlen, void(*callback)(char*));
+void handleSocket (int socket, char** buffer, int* bufferlen, void(*callback)(char*), void(*callbackClose)(int));
 
 #endif

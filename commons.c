@@ -5,7 +5,7 @@
 #include <string.h>
 #include "commons.h"
 
-void handleSocket (int socket, char** buffer, int* bufferlen, void(*callback)(char*))
+void handleSocket (int socket, char** buffer, int* bufferlen, void(*callback)(char*), void(*callbackClose)(int))
 {
 	char buf[BUFSIZE];
 	int readcount = read(socket, buf, BUFSIZE - 1);
@@ -17,8 +17,8 @@ void handleSocket (int socket, char** buffer, int* bufferlen, void(*callback)(ch
 	}
 	else if (readcount == 0)
 	{
-		printf("Connection to Server closed.\n");
-		exit(0);
+		callbackClose(socket);
+		return;
 	}
 
 	buf[readcount] = '\0';
