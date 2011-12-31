@@ -91,36 +91,36 @@ int connectToServer (char* host, char* port)
 	if ((rv = getaddrinfo(host, port, NULL, &servinfo)) != 0)
 	{
 		fprintf(stderr, "getaddrinfo error: %s\n", gai_strerror(rv));
-        exit(1);
+		exit(1);
 	}
 	
 	for (p = servinfo; p != NULL; p = p->ai_next)
 	{
-        if ((sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1)
-        {
-            continue;
-        }
+		if ((sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1)
+		{
+			continue;
+		}
 
-        if (connect(sockfd, p->ai_addr, p->ai_addrlen) == -1)
-        {
-            close(sockfd);
-            continue;
-        }
+		if (connect(sockfd, p->ai_addr, p->ai_addrlen) == -1)
+		{
+			close(sockfd);
+			continue;
+		}
 
-        break;
-    }
-    
-    freeaddrinfo(servinfo);
-    
-    if (p == NULL)
-    {
-        fprintf(stderr, "Failed to connect to server.\n");
-        exit(1);
-    }
-    
-    printf("Connected to server.\n");
-    
-    return sockfd;
+		break;
+	}
+	
+	freeaddrinfo(servinfo);
+	
+	if (p == NULL)
+	{
+		fprintf(stderr, "Failed to connect to server.\n");
+		exit(1);
+	}
+	
+	printf("Connected to server.\n");
+	
+	return sockfd;
 }
 
 int main (int argc, char *argv[])
