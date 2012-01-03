@@ -10,6 +10,8 @@ GtkWindow *window;
 GtkTextView *chatView;
 GtkEntry *chatEntry;
 
+GIOChannel* chan;
+
 int readfd, writefd;
 
 int guibufferlen = 1;
@@ -83,14 +85,12 @@ void handleGUIMessage (char* msg)
 
 void handleGUIDisconnect (int sock)
 {
+	g_io_channel_shutdown(chan, 0, NULL);
+
 	close(writefd);
 	close(readfd);
 
 	free(guibuffer);
-
-	exit(0);
-
-	printf("GUI: Connection closed\n");
 	exit(0);
 }
 
@@ -110,6 +110,8 @@ gboolean handleChannel (GIOChannel *source, GIOCondition condition, gpointer dat
 
 pid_t gui_start (int *infd, int *outfd)
 {
+	signal(SIGCLD, SIG_IGN);
+
 	int pipefd_in[2];
 	int pipefd_out[2];
 
@@ -146,21 +148,27 @@ pid_t gui_start (int *infd, int *outfd)
 		}
 		guibuffer[0] = '\0';
 
+		// close unused read and write ends
+		close(pipefd_in[0]);
+		close(pipefd_out[1]);
+
 		readfd = pipefd_out[0];
 		writefd = pipefd_in[1];
 
-		GIOChannel* chan = g_io_channel_unix_new(readfd);
+		chan = g_io_channel_unix_new(readfd);
 		GIOCondition condition = G_IO_IN | G_IO_IN;
 		g_io_add_watch(chan, condition, handleChannel, NULL);
 
 		drawGUI();
 
-		g_io_channel_shutdown(chan, 0, NULL);
-
 		handleGUIDisconnect(0);
 	}
 	else
 	{
+		// close unused read and write ends
+		close(pipefd_in[1]);
+		close(pipefd_out[0]);
+
 		return childpid;
 	}
 
