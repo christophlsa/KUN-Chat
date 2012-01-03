@@ -50,82 +50,42 @@ char* newlineCut (char* str)
 }
 
 /**
- * Send message written by user to all users.
+ * Send message to one or all users.
  */
-void sendToAllFromUser (struct User* user, char* msg)
+void sendToUser(struct User* fromUser, struct User* toUser, char* msg)
 {
 	msg = newlineCut(msg);
 
 	char* msg2send;
-	int msg2sendsize = asprintf(&msg2send, "%s: %s\n", user->nick, msg);
+	int msg2sendsize;
+	if (fromUser != NULL)
+		msg2sendsize = asprintf(&msg2send, "%s: %s\n", fromUser->nick, msg);
+	else
+		msg2sendsize = asprintf(&msg2send, "* %s\n", msg);
+
 	if (msg2sendsize < 0)
 	{
 		fprintf(stderr, "Speicherallokationsfehler\n");
 		exit(1);
 	}
 
-	printf(msg2send);
-
-	int i;
-	for (i = 1; i < poll_count; i++)
+	if (toUser != NULL)
 	{
-		if (fds[i].fd != 0)
-			write(fds[i].fd, msg2send, msg2sendsize);
+		printf("(to %s): %s", toUser->nick, msg2send);
+
+		write(fds[toUser->pollfd].fd, msg2send, msg2sendsize);
 	}
-
-	free(msg);
-	free(msg2send);
-}
-
-/**
- * Send status message to all users.
- */
-void sendToAll (char* msg)
-{
-	msg = newlineCut(msg);
-
-	char* msg2send;
-	int msg2sendsize = asprintf(&msg2send, "* %s\n", msg);
-	if (msg2sendsize < 0)
+	else
 	{
-		fprintf(stderr, "Speicherallokationsfehler\n");
-		exit(1);
+		printf(msg2send);
+
+		int i;
+		for (i = 1; i < poll_count; i++)
+		{
+			if (fds[i].fd != 0)
+				write(fds[i].fd, msg2send, msg2sendsize);
+		}
 	}
-
-	printf(msg2send);
-
-	int i;
-	for (i = 1; i < poll_count; i++)
-	{
-		if (fds[i].fd != 0)
-			write(fds[i].fd, msg2send, msg2sendsize);
-	}
-
-	free(msg);
-	free(msg2send);
-}
-
-/**
- * Send status message to only one user.
- */
-void sendToUser (struct User* user, char* msg)
-{
-	if (fds[user->pollfd].fd == 0)
-		return;
-
-	msg = newlineCut(msg);
-
-	char* msg2send;
-	int msg2sendsize = asprintf(&msg2send, "* %s\n", msg);
-	if (msg2sendsize < 0)
-	{
-		fprintf(stderr, "Speicherallokationsfehler\n");
-		exit(1);
-	}
-
-	printf("(to %s): %s", user->nick, msg2send);
-
-	write(fds[user->pollfd].fd, msg2send, msg2sendsize);
 
 	free(msg);
 	free(msg2send);
@@ -178,12 +138,12 @@ void setNick (struct User* user, char* newnick)
 	{
 		if (findUserByName(newnick) != NULL)
 		{
-			sendToUser(user, "This nick already exists.");
+			sendToUser(NULL, user, "This nick already exists.");
 			return;
 		}
 		else if (strncmp(newnick, "User", 5) == 0)
 		{
-			sendToUser(user, "This nick is not allowed.");
+			sendToUser(NULL, user, "This nick is not allowed.");
 			return;
 		}
 
@@ -203,7 +163,7 @@ void setNick (struct User* user, char* newnick)
 			fprintf(stderr, "Speicherallokationsfehler\n");
 			exit(1);
 		}
-		sendToAll(msg2send);
+		sendToUser(NULL, NULL, msg2send);
 		free(msg2send);
 	}
 }
@@ -259,7 +219,7 @@ void handleNewConnection ()
 			fprintf(stderr, "Speicherallokationsfehler\n");
 			exit(1);
 		}
-		sendToAll(msg2send);
+		sendToUser(NULL, NULL, msg2send);
 		free(msg2send);
 	}
 }
@@ -307,7 +267,7 @@ void handleDisconnect (int socket)
 		fprintf(stderr, "Speicherallokationsfehler\n");
 		exit(1);
 	}
-	sendToAll(msg2send);
+	sendToUser(NULL, NULL, msg2send);
 	free(msg2send);
 }
 
@@ -336,7 +296,7 @@ void handleMessage (char* content)
 	}
 	else if (strncmp(content, "/list", 5) == 0)
 	{
-		sendToUser(user, "User list:");
+		sendToUser(NULL, user, "User list:");
 
 		char* userlistmsg;
 
@@ -352,7 +312,7 @@ void handleMessage (char* content)
 				exit(1);
 			}
 
-			sendToUser(user, userlistmsg);
+			sendToUser(NULL, user, userlistmsg);
 			
 			free(userlistmsg);
 		}
@@ -363,7 +323,7 @@ void handleMessage (char* content)
 
 		if (endOfNick == NULL)
 		{
-			sendToUser(user, "wrong usage of /msg.");
+			sendToUser(NULL, user, "wrong usage of /msg.");
 			return;
 		}
 
@@ -382,41 +342,35 @@ void handleMessage (char* content)
 
 		if (touser == NULL)
 		{
-			sendToUser(user, "this user does not exists.");
+			sendToUser(NULL, user, "this user does not exists.");
 			return;
 		}
 
 		char* msg;
-		int msgsize = asprintf(&msg, "%s send to you: %s", user->nick, content + 5 + nickLen);
-		if (msgsize < 0)
+
+		if (asprintf(&msg, "%s send to you: %s", user->nick, content + 5 + nickLen) < 0)
 		{
 			fprintf(stderr, "Speicherallokationsfehler\n");
 			exit(1);
 		}
-		char* msg_wo_newline = newlineCut(msg);
 
-		sendToUser(touser, msg_wo_newline);
+		sendToUser(NULL, touser, msg);
 
 		free(msg);
-		free(msg_wo_newline);
 
-		char* msg2;
-		int msg2size = asprintf(&msg2, "you send to %s: %s", touser->nick, content + 5 + nickLen);
-		if (msg2size < 0)
+		if (asprintf(&msg, "you send to %s: %s", touser->nick, content + 5 + nickLen) < 0)
 		{
 			fprintf(stderr, "Speicherallokationsfehler\n");
 			exit(1);
 		}
-		char* msg2_wo_newline = newlineCut(msg2);
 
-		sendToUser(user, msg2_wo_newline);
+		sendToUser(NULL, user, msg);
 
-		free(msg2);
-		free(msg2_wo_newline);
+		free(msg);
 	}
 	else
 	{
-		sendToAllFromUser(user, content);
+		sendToUser(user, NULL, content);
 	}
 }
 
