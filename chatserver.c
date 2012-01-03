@@ -439,6 +439,30 @@ void handleMessage (char* content)
  */
 int main (int argc, char *argv[])
 {
+	long port = 4444;
+
+	if (argc > 2)
+	{
+		fprintf(stderr, "usage: %s [appnum]\n", argv[0]);
+		exit(1);
+	}
+	else if (argc == 2)
+	{
+		port = strtol(argv[1], NULL, 10);
+
+		if (errno == EINVAL || errno == ERANGE || port <= 0)
+		{
+			fprintf(stderr, "The given Port is not a valid integer.\n");
+			exit(1);
+		}
+
+		if (port <= 1024 && geteuid() != 0)
+		{
+			fprintf(stderr, "You have to run as root or choose a port over 1024.\n");
+			exit(1);
+		}
+	}
+
 	fds = (struct pollfd*) malloc(sizeof(struct pollfd) * poll_count);
 	if (fds == NULL)
 	{
@@ -470,7 +494,7 @@ int main (int argc, char *argv[])
 
 	my_addr.sin_family = AF_INET;
 	my_addr.sin_addr.s_addr = INADDR_ANY;
-	my_addr.sin_port = htons(4444);
+	my_addr.sin_port = htons(port);
 
 	bind(sfd, (struct sockaddr*) &my_addr, sizeof(struct sockaddr_in));
 	listen(sfd, 5);
