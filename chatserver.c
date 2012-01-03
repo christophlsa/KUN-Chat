@@ -30,20 +30,6 @@ struct User* users;
 struct User* currentUser;
 
 /**
- * Prints all connected users to console (for debugging).
- */
-void debugUserPrint ()
-{
-	printf("# user count: %d\n", user_count);
-
-	int i;
-	for (i = 0; i < user_count; i++)
-	{
-		printf("# -> [%d]: %s\n", i, users[i].nick);
-	}
-}
-
-/**
  * Cut all characters from beginning of newline.
  *
  * Memory for the new string is obtained with malloc(3), and can be freed with free(3).
