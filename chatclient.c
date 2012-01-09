@@ -1,5 +1,6 @@
 /* chatclient.c */
 
+#include "chatclient.h"
 #include <unistd.h>
 #include <stdio.h>
 #include <chatgui.h>
@@ -11,8 +12,6 @@
 #include <string.h>
 #include "commons.h"
 
-#define PORT "4444"
-
 int bufferlen = 1;
 char* buffer;
 int bufferlen2 = 1;
@@ -23,14 +22,28 @@ int serverfd, inguifd, outguifd;
 
 void handleMessageFromServer (char* msg)
 {
-	printf("%s", msg);
-	write(outguifd, msg, strlen(msg));
+	if (write(outguifd, msg, strlen(msg)) < 1)
+	{
+		fprintf(stderr, "Socket Write to GUI failed\n");
+		handleDisconnect(outguifd);
+	}
+	else
+	{
+		printf("%s", msg);
+	}
 }
 
 void handleMessageFromGUI (char* msg)
 {
-	printf("%s", msg);
-	write(serverfd, msg, strlen(msg));
+	if (write(serverfd, msg, strlen(msg)) < 1)
+	{
+		fprintf(stderr, "Socket Write to Server failed\n");
+		handleDisconnect(serverfd);
+	}
+	else
+	{
+		printf("%s", msg);
+	}
 }
 
 int connectToServer (char* host, char* port)

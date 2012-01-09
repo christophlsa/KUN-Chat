@@ -1,5 +1,6 @@
 /* chatserver.c */
 
+#include "chatserver.h"
 #include <unistd.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -13,15 +14,6 @@
 #include <ctype.h>
 #include "commons.h"
 
-struct User
-{
-	int pollfd;
-	char nick[20];
-	char* buffer;
-	int bufferlen;
-	int active;
-};
-
 int user_count = 0;
 int nick_count = 0;
 int poll_count = 1;
@@ -30,11 +22,7 @@ struct User* users;
 
 struct User* currentUser;
 
-/**
- * Cut all characters from beginning of newline.
- *
- * Memory for the new string is obtained with malloc(3), and can be freed with free(3).
- */
+
 char* newlineCut (char* str)
 {
 	char* newline = strchr(str, '\n');
@@ -50,9 +38,6 @@ char* newlineCut (char* str)
 	return newstr;
 }
 
-/**
- * Send message to one or all users.
- */
 void sendToUser(struct User* fromUser, struct User* toUser, char* msg)
 {
 	msg = newlineCut(msg);
@@ -72,29 +57,43 @@ void sendToUser(struct User* fromUser, struct User* toUser, char* msg)
 
 	if (toUser != NULL)
 	{
-		printf("(to %s): %s", toUser->nick, msg2send);
-
-		write(fds[toUser->pollfd].fd, msg2send, msg2sendsize);
+		if (write(fds[toUser->pollfd].fd, msg2send, msg2sendsize) < 1)
+		{
+			fprintf(stderr, "Socket Write to User %s failed\n", toUser->nick);
+			handleDisconnect(fds[toUser->pollfd].fd);
+		}
+		else
+		{
+			printf("(to %s): %s", toUser->nick, msg2send);
+		}
 	}
 	else
 	{
-		printf(msg2send);
-
-		int i;
+		int i, send = 0;
 		for (i = 1; i < poll_count; i++)
 		{
 			if (fds[i].fd != 0)
-				write(fds[i].fd, msg2send, msg2sendsize);
+			{
+				if (write(fds[i].fd, msg2send, msg2sendsize) < 1)
+				{
+					fprintf(stderr, "Socket Write to User %s failed\n", findUserBySocketNumber(i)->nick);
+					handleDisconnect(fds[i].fd);
+				}
+				else
+				{
+					send = 1;
+				}
+			}
 		}
+
+		if (send)
+			printf(msg2send);
 	}
 
 	free(msg);
 	free(msg2send);
 }
 
-/**
- * Returns user with given number of socket.
- */
 struct User* findUserBySocketNumber (int socknum)
 {
 	int i;
@@ -109,9 +108,6 @@ struct User* findUserBySocketNumber (int socknum)
 	return NULL;
 }
 
-/**
- * Returns user with given nick.
- */
 struct User* findUserByName (char* name)
 {
 	int i;
@@ -126,11 +122,6 @@ struct User* findUserByName (char* name)
 	return NULL;
 }
 
-/**
- * Returns given nick with only alpha numeric characters.
- *
- * Memory for the new string is obtained with malloc(3), and can be freed with free(3).
- */
 char* getValidatedNick (char* nick)
 {
 	int i, j = 0, len = strlen(nick);
@@ -153,9 +144,6 @@ char* getValidatedNick (char* nick)
 	return newnick;
 }
 
-/**
- * Set new nick of user. For new user a new nick will be generated.
- */
 void setNick (struct User* user, char* newnick)
 {
 	if (newnick == NULL)
@@ -199,9 +187,6 @@ void setNick (struct User* user, char* newnick)
 	}
 }
 
-/**
- * Accepts new connection and creates new user and in poll array.
- */
 void handleNewConnection ()
 {
 	int peer_addr = accept(fds[0].fd, NULL, NULL);
@@ -255,9 +240,6 @@ void handleNewConnection ()
 	}
 }
 
-/**
- * Set user and socket as non active.
- */
 void handleDisconnect (int socket)
 {
 	int socknum = -1;
@@ -302,9 +284,6 @@ void handleDisconnect (int socket)
 	free(msg2send);
 }
 
-/**
- * Handles with message.
- */
 void handleMessage (char* content)
 {
 	struct User* user = currentUser;
