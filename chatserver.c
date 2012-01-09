@@ -10,6 +10,7 @@
 #include <string.h>
 #include <errno.h>
 #include <netdb.h>
+#include <ctype.h>
 #include "commons.h"
 
 struct User
@@ -126,6 +127,33 @@ struct User* findUserByName (char* name)
 }
 
 /**
+ * Returns given nick with only alpha numeric characters.
+ *
+ * Memory for the new string is obtained with malloc(3), and can be freed with free(3).
+ */
+char* getValidatedNick (char* nick)
+{
+	int i, j = 0, len = strlen(nick);
+
+	char* newnick = (char*) malloc(sizeof(char) * len + 1);
+	if (newnick == NULL)
+	{
+		fprintf(stderr, "Speicherallokationsfehler\n");
+		exit(1);
+	}
+
+	for (i = 0; i < len; i++)
+	{
+		if (isalnum(nick[i]))
+			newnick[j++] = nick[i];
+	}
+
+	newnick[j] = '\0';
+
+	return newnick;
+}
+
+/**
  * Set new nick of user. For new user a new nick will be generated.
  */
 void setNick (struct User* user, char* newnick)
@@ -136,6 +164,8 @@ void setNick (struct User* user, char* newnick)
 	}
 	else
 	{
+		newnick = getValidatedNick(newnick);
+
 		if (findUserByName(newnick) != NULL)
 		{
 			sendToUser(NULL, user, "This nick already exists.");
@@ -165,6 +195,7 @@ void setNick (struct User* user, char* newnick)
 		}
 		sendToUser(NULL, NULL, msg2send);
 		free(msg2send);
+		free(newnick);
 	}
 }
 

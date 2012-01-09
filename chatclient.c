@@ -80,6 +80,15 @@ int connectToServer (char* host, char* port)
 void handleDisconnect (int sock)
 {
 	printf("Connection to %s closed.\n", sock == serverfd ? "Server" : "GUI");
+
+	close(serverfd);
+	close(inguifd);
+	close(outguifd);
+
+	free(fds);
+	free(buffer);
+	free(buffer2);
+
 	exit(0);
 }
 
