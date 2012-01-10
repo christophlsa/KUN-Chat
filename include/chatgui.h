@@ -10,6 +10,9 @@
  * =====================================================================================
  */
 
+#ifndef __chatgui_include__
+#define __chatgui_include__
+
 #include <unistd.h>
 
 /**
@@ -24,3 +27,5 @@
  * @return The process id of the GUI process is returned.
  */
 pid_t gui_start(int *infd, int *outfd);
+
+#endif
