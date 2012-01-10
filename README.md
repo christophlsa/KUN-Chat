@@ -20,7 +20,7 @@ Arch Linux:
 
 ## Bugs
 
-* Die GUI des Clients beendet sich nicht mehr, wenn der Server geschlossen wurde.
+* -
 
 
 ## Lizenz

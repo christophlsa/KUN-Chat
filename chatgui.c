@@ -172,7 +172,7 @@ pid_t gui_start (int *infd, int *outfd)
 		writefd = pipefd_in[1];
 
 		chan = g_io_channel_unix_new(readfd);
-		GIOCondition condition = G_IO_IN | G_IO_IN;
+		GIOCondition condition = G_IO_IN | G_IO_HUP;
 		g_io_add_watch(chan, condition, handleChannel, NULL);
 
 		drawGUI();
