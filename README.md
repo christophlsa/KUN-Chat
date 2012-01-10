@@ -20,8 +20,7 @@ Arch Linux:
 
 ## Bugs
 
-* Der Server meldet nicht mehr, wenn ein User den Chat verlassen hat.
-* Der Client beendet sich nicht mehr, wenn der Server geschlossen wurde.
+* Die GUI des Clients beendet sich nicht mehr, wenn der Server geschlossen wurde.
 
 
 ## Lizenz

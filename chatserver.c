@@ -83,7 +83,7 @@ void sendToUser(struct User* fromUser, struct User* toUser, char* msg)
 	}
 	else
 	{
-		int i, send = 0;
+		int i;
 		for (i = 1; i < poll_count; i++)
 		{
 			if (fds[i].fd != 0)
@@ -93,15 +93,10 @@ void sendToUser(struct User* fromUser, struct User* toUser, char* msg)
 					fprintf(stderr, "Socket Write to User %s failed\n", findUserBySocketNumber(i)->nick);
 					handleDisconnect(fds[i].fd);
 				}
-				else
-				{
-					send = 1;
-				}
 			}
 		}
 
-		if (send)
-			printf(msg2send);
+		printf(msg2send);
 	}
 
 	free(msg);
@@ -286,6 +281,8 @@ void handleDisconnect (int socket)
 		exit(1);
 	}
 	user->active = 0;
+
+	free(user->buffer);
 
 	char* msg2send;
 	int msg2sendsize = asprintf(&msg2send, "%s leaved this chat.", user->nick);
