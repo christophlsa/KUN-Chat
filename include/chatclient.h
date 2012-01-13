@@ -17,8 +17,6 @@
 #ifndef __chatclient_include__
 #define __chatclient_include__
 
-#define PORT "4444"
-
 void handleMessageFromServer (char* msg);
 
 void handleMessageFromGUI (char* msg);

@@ -26,9 +26,10 @@
 #include <errno.h>
 #include <netdb.h>
 #include <ctype.h>
+#include <assert.h>
 #include "commons.h"
 
-int user_count = 0;
+int user_count = 1;
 int nick_count = 0;
 int poll_count = 1;
 struct pollfd* fds;
@@ -50,6 +51,57 @@ char* newlineCut (char* str)
 	}
 
 	return newstr;
+}
+
+void deleteUser (struct User* user)
+{
+	assert(user_count > 1);
+	assert(poll_count > 1);
+
+	if (user == NULL)
+	{
+		return;
+	}
+
+	int i;
+	for (i = 1; i < user_count; i++)
+	{
+		if (&(users[i]) == user)
+		{
+			break;
+		}
+	}
+
+	if (i >= user_count)
+	{
+		fprintf(stderr, "user does not exists (while deleting)\n");
+		exit(1);
+	}
+
+	free(user->buffer);
+
+	if (user_count > 2 && i != user_count - 1)
+	{
+		int olduserfdpos = user->pollfd;
+
+		memcpy(&(users[i]), &(users[user_count - 1]), sizeof(struct User));
+		memcpy(&(fds[olduserfdpos]), &(fds[poll_count - 1]), sizeof(struct pollfd));
+		findUserBySocketNumber(poll_count - 1)->pollfd = olduserfdpos;
+	}
+
+	users = (struct User*) realloc(users, sizeof(struct User) * --user_count);
+	if (users == NULL)
+	{
+		fprintf(stderr, "Speicherallokationsfehler\n");
+		exit(1);
+	}
+
+	fds = (struct pollfd*) realloc(fds, sizeof(struct pollfd) * --poll_count);
+	if (fds == NULL)
+	{
+		fprintf(stderr, "Speicherallokationsfehler\n");
+		exit(1);
+	}
 }
 
 void sendToUser(struct User* fromUser, struct User* toUser, char* msg)
@@ -106,7 +158,7 @@ void sendToUser(struct User* fromUser, struct User* toUser, char* msg)
 struct User* findUserBySocketNumber (int socknum)
 {
 	int i;
-	for (i = 0; i < user_count; i++)
+	for (i = 1; i < user_count; i++)
 	{
 		if (users[i].pollfd == socknum)
 		{
@@ -120,9 +172,9 @@ struct User* findUserBySocketNumber (int socknum)
 struct User* findUserByName (char* name)
 {
 	int i;
-	for (i = 0; i < user_count; i++)
+	for (i = 1; i < user_count; i++)
 	{
-		if (users[i].active == 1 && strcmp(users[i].nick, name) == 0)
+		if (strcmp(users[i].nick, name) == 0)
 		{
 			return &(users[i]);
 		}
@@ -155,6 +207,11 @@ char* getValidatedNick (char* nick)
 
 void setNick (struct User* user, char* newnick)
 {
+	if (user == NULL)
+	{
+		return;
+	}
+
 	if (newnick == NULL)
 	{
 		snprintf(user->nick, 20, "User%d", ++nick_count);
@@ -207,7 +264,7 @@ void handleNewConnection ()
 	}
 	else
 	{
-		fds = realloc(fds, sizeof(struct pollfd) * ++poll_count);
+		fds = (struct pollfd*) realloc(fds, sizeof(struct pollfd) * ++poll_count);
 		if (fds == NULL)
 		{
 			fprintf(stderr, "Speicherallokationsfehler\n");
@@ -217,7 +274,7 @@ void handleNewConnection ()
 		fds[poll_count-1].events = POLLIN;
 		fds[poll_count-1].revents = 0;
 
-		users = realloc(users, sizeof(struct User) * ++user_count);
+		users = (struct User*) realloc(users, sizeof(struct User) * ++user_count);
 		if (users == NULL)
 		{
 			fprintf(stderr, "Speicherallokationsfehler\n");
@@ -233,7 +290,6 @@ void handleNewConnection ()
 			exit(1);
 		}
 		users[user_count-1].buffer[0] = '\0';
-		users[user_count-1].active = 1;
 
 		setNick(&(users[user_count-1]), NULL);
 
@@ -271,21 +327,19 @@ void handleDisconnect (int socket)
 
 	close(socket);
 
-	fds[socknum].fd = 0;
-	fds[socknum].events = 0;
-
 	struct User* user = findUserBySocketNumber(socknum);
 	if (user == NULL)
 	{
 		fprintf(stderr, "Could not find user for given socket.\n");
 		exit(1);
 	}
-	user->active = 0;
-
-	free(user->buffer);
+	
+	char* tmpusername = strdup(user->nick);
+	
+	deleteUser(user);
 
 	char* msg2send;
-	int msg2sendsize = asprintf(&msg2send, "%s leaved this chat.", user->nick);
+	int msg2sendsize = asprintf(&msg2send, "%s leaved this chat.", tmpusername);
 	if (msg2sendsize < 0)
 	{
 		fprintf(stderr, "Speicherallokationsfehler\n");
@@ -293,10 +347,16 @@ void handleDisconnect (int socket)
 	}
 	sendToUser(NULL, NULL, msg2send);
 	free(msg2send);
+	free(tmpusername);
 }
 
 void handleMessage (char* content)
 {
+	if (currentUser == NULL)
+	{
+		return;
+	}
+
 	struct User* user = currentUser;
 
 	if (strncmp(content, "/nick ", 6) == 0)
@@ -322,11 +382,8 @@ void handleMessage (char* content)
 		char* userlistmsg;
 
 		int i;
-		for (i = 0; i < user_count; i++)
+		for (i = 1; i < user_count; i++)
 		{
-			if (users[i].active == 0)
-				continue;
-
 			if (asprintf(&userlistmsg, "-> %s", users[i].nick) < 0)
 			{
 				fprintf(stderr, "Speicherallokationsfehler\n");
@@ -430,12 +487,18 @@ int main (int argc, char *argv[])
 		fprintf(stderr, "Speicherallokationsfehler\n");
 		exit(1);
 	}
-	users = (struct User*) malloc(sizeof(struct User) * 1);
+	users = (struct User*) malloc(sizeof(struct User) * user_count);
 	if (users == NULL)
 	{
 		fprintf(stderr, "Speicherallokationsfehler\n");
 		exit(1);
 	}
+
+	// Dummy Server User
+	users[0].pollfd = 0;
+	strcpy(users[0].nick, "Server");
+	users[0].buffer = NULL;
+	users[0].bufferlen = 0;
 
 	int sfd;
 	struct sockaddr_in my_addr;
@@ -491,6 +554,11 @@ int main (int argc, char *argv[])
 					else
 					{
 						currentUser = findUserBySocketNumber(i);
+						if (currentUser == NULL)
+						{
+							fprintf(stderr, "User does not exists?!?!");
+							exit(1);
+						}
 						handleSocket(fds[i].fd, &(currentUser->buffer), &(currentUser->bufferlen), handleMessage, handleDisconnect);
 					}
 				}

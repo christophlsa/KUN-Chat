@@ -23,7 +23,6 @@ struct User
 	char nick[20];
 	char* buffer;
 	int bufferlen;
-	int active;
 };
 
 /**
@@ -32,6 +31,11 @@ struct User
  * Memory for the new string is obtained with malloc(3), and can be freed with free(3).
  */
 char* newlineCut (char* str);
+
+/**
+ * Deletes given user and its socket.
+ */
+void deleteUser (struct User* user);
 
 /**
  * Send message to one or all users.
