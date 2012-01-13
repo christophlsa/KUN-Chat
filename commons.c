@@ -23,8 +23,8 @@
 
 void handleSocket (int socket, char** buffer, int* bufferlen, void(*callback)(char*), void(*callbackClose)(int))
 {
-	char buf[BUFSIZE];
-	int readcount = read(socket, buf, BUFSIZE - 1);
+	char buf[BUFSIZE + 1];
+	int readcount = read(socket, buf, BUFSIZE);
 
 	if (readcount < 0)
 	{

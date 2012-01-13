@@ -18,8 +18,12 @@
 #define __commons_include__
 
 #define PORT "4444"
-#define BUFSIZE 1025
+#define BUFSIZE 1024
 
+/**
+ * Read from given socket, write in given buffer and call callback for each message seperated with newline character.
+ * If count of characters is zero then call callbackClose.
+ */
 void handleSocket (int socket, char** buffer, int* bufferlen, void(*callback)(char*), void(*callbackClose)(int));
 
 #endif

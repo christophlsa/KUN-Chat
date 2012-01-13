@@ -17,12 +17,24 @@
 #ifndef __chatclient_include__
 #define __chatclient_include__
 
+/**
+ * Writes all messages from server to GUI.
+ */
 void handleMessageFromServer (char* msg);
 
+/**
+ * Writes all messages from GUI to server.
+ */
 void handleMessageFromGUI (char* msg);
 
+/**
+ * Connects to server using given hostname/ip address and port.
+ */
 int connectToServer (char* host, char* port);
 
+/**
+ * Closes connections and GUI on disconnect from server or GUI.
+ */
 void handleDisconnect (int sock);
 
 #endif
