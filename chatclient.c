@@ -186,7 +186,7 @@ int main (int argc, char *argv[])
 			int i;
 			for (i = 0; i < 2; i++)
 			{
-				if (fds[i].revents & POLLHUP)
+				if (fds[i].revents & POLLHUP || fds[i].revents & POLLERR)
 				{
 					handleDisconnect(fds[i].fd);
 				}
