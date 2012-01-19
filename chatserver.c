@@ -520,8 +520,16 @@ int main (int argc, char *argv[])
 	my_addr.sin_addr.s_addr = INADDR_ANY;
 	my_addr.sin_port = htons(port);
 
-	bind(sfd, (struct sockaddr*) &my_addr, sizeof(struct sockaddr_in));
-	listen(sfd, 5);
+	if (bind(sfd, (struct sockaddr*) &my_addr, sizeof(struct sockaddr_in)) < 0)
+	{
+		fprintf(stderr, "bind error: %s\n", strerror(errno));
+		exit(1);
+	}
+	if (listen(sfd, 5) < 0)
+	{
+		fprintf(stderr, "bind error: %s\n", strerror(errno));
+		exit(1);
+	}
 
 	fds[0].fd = sfd;
 	fds[0].events = POLLIN;
@@ -541,7 +549,7 @@ int main (int argc, char *argv[])
 			int i;
 			for (i = 0; i < poll_count; i++)
 			{
-				if (fds[i].revents & POLLHUP)
+				if (fds[i].revents & POLLHUP || fds[i].revents & POLLERR)
 				{
 					handleDisconnect(fds[i].fd);
 				}
